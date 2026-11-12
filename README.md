@@ -70,7 +70,7 @@ pytest
 | `python tools/scan.py` / `tools/sniff.py` | Diagnóstico y capturas BLE |
 
 El ejecutable lo construye GitHub Actions (`.github/workflows/build.yml`) con
-PyInstaller; al subir una etiqueta `v*` se publica como versión.
+PyInstaller; cada cambio en `main` se publica como versión nueva.
 
 Documentación del protocolo: [`docs/PROTOCOL.md`](docs/PROTOCOL.md) y
 [`docs/OPENBIKECONTROL.md`](docs/OPENBIKECONTROL.md).

@@ -3,7 +3,6 @@ name: build
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -40,9 +39,13 @@ jobs:
         with:
           name: ZwiftRideBridge-windows
           path: dist/ZwiftRideBridge.exe
+      # Cada cambio en main publica una versión nueva con el ejecutable.
       - name: Publicar versión
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Zwift Ride Bridge v0.1.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
           files: dist/ZwiftRideBridge.exe
           generate_release_notes: true
