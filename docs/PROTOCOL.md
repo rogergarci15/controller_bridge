@@ -29,6 +29,33 @@ para `rideLeft`). El firmware 1.2.0 es el último que [BC] soporta para el
 Ride sin "desbloqueo con Zwift" (que empieza en 1.3.0). Las secciones sobre
 cifrado (§3.2, §4) y el mensaje `0x07` quedan como referencia.
 
+## Verificado con captura real (Zwift Ride, firmware 1.2.0)
+
+Captura guiada de 26 pasos en `tests/fixtures/ride_fw120_guided.jsonl`
+(identificadores del hardware eliminados). Lo que sigue ya no es "según las
+fuentes": está comprobado y cubierto por `tests/test_protocol.py`.
+
+| Dato | Resultado |
+|---|---|
+| Handshake | Se escribe `RideOn` (6 bytes) en `…0003`; el mando responde por `…0004` con `RideOn` **a secas, sin los 2 bytes extra**. Sin cifrado |
+| Conexión | Solo al mando izquierdo; los botones del derecho llegan por ella |
+| Mensaje de botones | Tipo `0x23`: campo 1 = mapa de bits (0 = pulsado), campo **3** repetido = analógicos `{1: posición, 2: sint32}`. Siempre 4 entradas (posiciones 0–3) |
+| Mapa de bits | El de `zwift_ride.dart` de [BC], los 16 bits confirmados uno a uno. La tabla de `zwift.pbenum.dart` es incorrecta para este hardware |
+| Palancas | Posición 0 = izquierda, 1 = derecha. Valor continuo 0…100 (a fondo = 100). Cerca del reposo hay ruido de hasta ~10. Posiciones 2 y 3 siempre 0 |
+| Palanca negativa | La izquierda dio una vez valores negativos (−4, −100, −91) fuera de los pasos del guion. **Pendiente** de saber qué movimiento fue |
+| Repetición | Mientras hay actividad el estado se repite cada ~60–120 ms (mediana 109 ms) y sigue ~1 s tras soltar. Hay que deduplicar |
+| Reposo | `0x15` cada 1,0 s |
+| Batería | `0x19`, nivel en el campo 2 (`19 10 5e` = 94 %), cada 5 s |
+| Otros | `0x2A` (log del mando) de vez en cuando; se ignora |
+| Keep-alive | La conexión aguantó 5,5 min sin que la app escribiera nada tras el handshake (con actividad). Falta la prueba de 10 min en reposo absoluto |
+| MTU | 152 en Windows 11 |
+
+Nombres de botón usados en el código (`lado.botón`): `left.up`, `left.down`,
+`left.left`, `left.right`, `right.a`, `right.b`, `right.y`, `right.z`,
+`left|right.shift_upper` (0x100 / 0x1000), `left|right.shift_lower`
+(0x200 / 0x2000), `left|right.powerup` (0x400 / 0x4000), `left|right.power`
+(0x800 / 0x8000) y los analógicos `left.paddle`, `right.paddle`.
+
 ## Fuentes
 
 | Sigla | Fuente | Licencia | Qué aporta |

@@ -54,7 +54,7 @@ class CaptureWriter:
 
 
 def read_capture(path: Path) -> Iterator[dict[str, Any]]:
-    with path.open(encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if line:

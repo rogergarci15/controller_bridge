@@ -3,7 +3,8 @@
 Puente Zwift Play → MyWhoosh: lee los mandos por Bluetooth LE y los traduce a
 pulsaciones de teclado (y, más adelante, a OpenBikeControl por red).
 
-**Estado: Fase 1 (herramientas de diagnóstico).** Todavía no hay puente.
+**Estado: Fase 2 (protocolo y monitor).** Todavía no envía teclas.
+Probado con Zwift Ride, firmware 1.2.0.
 Documentación del protocolo en [`docs/PROTOCOL.md`](docs/PROTOCOL.md) y
 [`docs/OPENBIKECONTROL.md`](docs/OPENBIKECONTROL.md).
 
@@ -31,6 +32,13 @@ python tools/sniff.py --handshake keyed               # mismo guion, con handsha
 
 Las capturas se guardan en `captures/*.jsonl` (una línea JSON por mensaje,
 con marca de tiempo, característica y bytes en hex).
+
+## Ver los eventos en tiempo real
+
+```powershell
+python -m zwiftplay monitor                                              # con los mandos
+python -m zwiftplay monitor --replay tests/fixtures/ride_fw120_guided.jsonl  # sin hardware
+```
 
 ## Licencia
 

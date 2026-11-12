@@ -1,0 +1,49 @@
+// Esquema de referencia de los mensajes del Zwift Ride (firmware 1.2.0).
+//
+// NO se compila: zwiftplay/protocol.py decodifica estos mensajes a mano.
+// Sirve como documentación del formato. Deducido de:
+//   - captura real (tests/fixtures/ride_fw120_guided.jsonl)
+//   - [BC] OpenBikeControl/bikecontrol, prop_public/lib/protocol/zwift.pb.dart
+//   - [MK-R] makinolo.com, "Zwift Ride protocol"
+// Cada mensaje va precedido en el aire por 1 byte de tipo que no es protobuf.
+
+syntax = "proto2";
+
+// Tipo 0x23. Captura (nada pulsado):
+//   23 08 ff ff ff ff 0f  1a 04 08 00 10 00  1a 04 08 01 10 00  ...
+message RideKeyPadStatus {
+  // Mapa de bits, lógica invertida: bit a 0 = botón pulsado.
+  //   0x0001 izq. cruceta izquierda   0x0100 izq. cambio superior
+  //   0x0002 izq. cruceta arriba      0x0200 izq. cambio inferior
+  //   0x0004 izq. cruceta derecha     0x0400 izq. power-up
+  //   0x0008 izq. cruceta abajo       0x0800 izq. encendido
+  //   0x0010 dcha. A                  0x1000 dcha. cambio superior
+  //   0x0020 dcha. B                  0x2000 dcha. cambio inferior
+  //   0x0040 dcha. Y                  0x4000 dcha. power-up
+  //   0x0080 dcha. Z                  0x8000 dcha. encendido
+  optional uint32 button_map = 1;
+
+  // Siempre llegan 4 entradas (posiciones 0..3); 2 y 3 valen siempre 0.
+  repeated RideAnalogKeyPress analog_paddles = 3;
+}
+
+message RideAnalogKeyPress {
+  optional RideAnalogLocation location = 1;
+  // Palanca: 0 en reposo, hasta 100 a fondo. Zigzag.
+  optional sint32 analog_value = 2;
+}
+
+enum RideAnalogLocation {
+  LEFT = 0;
+  RIGHT = 1;
+  UNUSED_2 = 2;
+  UNUSED_3 = 3;
+}
+
+// Tipo 0x19, cada ~5 s. Captura: 19 10 5e  -> 94 %
+message BatteryNotification {
+  optional uint32 level = 2;
+}
+
+// Tipo 0x15: reposo, sin cuerpo, 1 por segundo.
+// Tipo 0x2A: datos de log del mando (se ignoran).
