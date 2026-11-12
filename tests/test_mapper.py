@@ -147,7 +147,7 @@ def test_default_config_loads():
     assert cfg.bindings["left.shift_lower"].key == "i"
     assert cfg.bindings["left.paddle"] == Binding("a", mode="hold", threshold=50, release=30)
     assert cfg.bindings["right.paddle"].key == "d"
-    assert cfg.bindings["right.b"].key == "esc" and cfg.bindings["left.powerup"].key == "space"
+    assert cfg.bindings["right.b"].key == "enter" and cfg.bindings["left.powerup"].key == "space"
     assert cfg.low_battery == 15
 
 

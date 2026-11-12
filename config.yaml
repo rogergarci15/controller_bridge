@@ -30,14 +30,14 @@ mapping:
   left.paddle:  {key: a, mode: hold, threshold: 50, release: 30}
   right.paddle: {key: d, mode: hold, threshold: 50, release: 30}
 
-  # Resto de botones. Atajos de MyWhoosh según guías NO oficiales (pueden
-  # cambiar entre versiones): compruébalos y cambia o borra lo que no te sirva.
+  # Resto de botones.
+  # Comprobado en MyWhoosh con el teclado:
+  right.b: enter         # pausa
+  right.z: u             # mostrar / ocultar la interfaz
+  # Según guías NO oficiales, sin comprobar: cambia o borra lo que no sirva.
   left.powerup: space    # usar power-up
   right.powerup: space
   right.y: tab           # cambiar de cámara
-  right.z: h             # mostrar / ocultar la interfaz
-  right.b: esc           # pausa / menú
-  left.down: u           # media vuelta
 
 # Aviso de batería baja (%). Se usará en la fase 4.
 low_battery: 15
