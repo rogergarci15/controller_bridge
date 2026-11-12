@@ -5,6 +5,30 @@ mis mandos (firmware 1.2.0). Cada dato lleva su fuente y, donde las fuentes no
 coinciden o no dicen nada, queda marcado como **⚠ POR VERIFICAR** con la forma
 de comprobarlo en la Fase 1.
 
+## Hallazgo con el hardware real (12-nov-2026, `tools/scan.py`)
+
+Mis mandos **no se anuncian como Zwift Play sino como Zwift Ride**:
+
+| | Izquierdo | Derecho |
+|---|---|---|
+| Nombre anunciado | `Zwift Ride` | `Zwift Ride` |
+| Datos de fabricante `0x094A` | `08 e0 26` → tipo `0x08` (Ride izquierdo) | `07 6a fa` → tipo `0x07` (Ride derecho) |
+| Servicio anunciado | `0000fc82-…` | `0000fc82-…` |
+| Firmware / hardware | 1.2.0 / B.0 | 1.2.0 / B.0 |
+
+Verificado: los datos de fabricante **sí llegan en Windows** (bleak/WinRT); el
+servicio es `FC82` con las características `…0002` (notify), `…0003`
+(solo write-without-response), `…0004` (indicate, read) y `…0006`; la batería
+`2A19` admite notify.
+
+Consecuencias: el protocolo que aplica es el del **Ride** (§6.2), no el del
+Play 1.x (§6.1): handshake `RideOn` en claro, sin cifrado, botones en mapa de
+bits (mensaje `0x23`) y **una sola conexión, al mando izquierdo**, por la que
+llegan también los botones del derecho ([MK-R]; [BC] solo crea dispositivo
+para `rideLeft`). El firmware 1.2.0 es el último que [BC] soporta para el
+Ride sin "desbloqueo con Zwift" (que empieza en 1.3.0). Las secciones sobre
+cifrado (§3.2, §4) y el mensaje `0x07` quedan como referencia.
+
 ## Fuentes
 
 | Sigla | Fuente | Licencia | Qué aporta |

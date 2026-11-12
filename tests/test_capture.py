@@ -32,3 +32,11 @@ def test_script_labels_unique_and_cover_both_sides():
                      "right_paddle_steer", "right_paddle_brake", "left_paddle_steer_slow"):
         assert expected in labels
     assert all(s.label.startswith("right_") for s in steps_for_side("right"))
+
+
+def test_ride_script_labels_unique():
+    from zwiftplay.capture_script import ride_steps
+    labels = [s.label for s in ride_steps()]
+    assert len(labels) == len(set(labels))
+    for expected in ("left_up", "right_a", "left_shift_1", "right_shift_2", "left_paddle", "right_paddle_slow"):
+        assert expected in labels

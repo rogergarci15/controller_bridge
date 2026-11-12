@@ -32,7 +32,7 @@ from zwiftplay import constants as c
 from zwiftplay import handshake
 from zwiftplay.ble import FoundDevice, scan_zwift
 from zwiftplay.capture import CaptureWriter
-from zwiftplay.capture_script import guided_steps
+from zwiftplay.capture_script import Step, guided_steps, ride_steps
 
 IDLE_HEX = bytes([c.MSG_IDLE]).hex()
 
@@ -160,8 +160,7 @@ async def ask_enter(prompt: str) -> None:
     await asyncio.to_thread(input, prompt)
 
 
-async def run_guided(sessions: list[Session], cap: CaptureWriter, sides: list[str]) -> None:
-    steps = guided_steps(sides)
+async def run_guided(sessions: list[Session], cap: CaptureWriter, steps: list[Step]) -> None:
     print(f"\nGuion de {len(steps)} pasos. En cada uno: lee la instrucción, pulsa Enter y hazlo")
     print("mientras corre la cuenta atrás. Si te equivocas, sigue; anótalo y me lo dices.\n")
     for index, step in enumerate(steps, 1):
@@ -199,6 +198,8 @@ async def main() -> int:
         help="2 bytes en hex tras 'RideOn' en modo keyed: 0102 (captura real, defecto) o 0009",
     )
     parser.add_argument("--address", action="append", help="conectar solo a esta dirección (repetible)")
+    parser.add_argument("--include-right", action="store_true",
+                        help="Zwift Ride: conectar también al mando derecho (por defecto solo al izquierdo)")
     parser.add_argument("--scan-time", type=float, default=8.0)
     parser.add_argument("--out", type=Path, default=Path("captures"))
     parser.add_argument("--note", default="", help="texto libre que se guarda en la captura")
@@ -216,6 +217,13 @@ async def main() -> int:
     if args.address:
         wanted = {a.lower() for a in args.address}
         found = [f for f in found if f.device.address.lower() in wanted]
+    # Zwift Ride: el mando derecho envía sus botones a través del izquierdo y
+    # solo hay que conectarse a este ([MK-R]; [BC] bluetooth_device.dart).
+    if not args.include_right and any(f.info.kind == "ride_left" for f in found):
+        skipped = [f for f in found if f.info.kind == "ride_right"]
+        found = [f for f in found if f.info.kind != "ride_right"]
+        for f in skipped:
+            print(f"  {f.label}: no me conecto (Zwift Ride: todo llega por el izquierdo). Déjalo encendido.")
     if not found:
         print("No se ha encontrado ningún dispositivo Zwift. Prueba `python tools/scan.py --all`.")
         return 1
@@ -253,7 +261,8 @@ async def main() -> int:
                 sides = sorted({s.found.info.side for s in active if s.found.info.side})
                 if not sides or any(s.found.info.side is None for s in active):
                     sides = ["left", "right"]  # sin datos de fabricante no sabemos el lado
-                await run_guided(active, cap, sides)
+                is_ride = any(s.found.info.kind.startswith(("ride_", "play_fw2")) for s in active)
+                await run_guided(active, cap, ride_steps() if is_ride else guided_steps(sides))
             elif args.mode == "idle":
                 print(f"\nModo reposo: NO toques los mandos durante {args.duration:.0f} s.")
                 await run_timed(active, cap, "idle_long", args.duration)

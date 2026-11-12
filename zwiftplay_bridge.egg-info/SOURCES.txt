@@ -1,4 +1,5 @@
 LICENSE
+README.md
 pyproject.toml
 tests/test_capture.py
 tests/test_discovery.py

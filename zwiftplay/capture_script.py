@@ -81,3 +81,48 @@ def guided_steps(sides: list[str]) -> list[Step]:
     for side in sides:
         steps += steps_for_side(side)
     return steps
+
+
+# --- Zwift Ride (y Play con firmware 2.x) ---------------------------------
+# Una sola conexión (mando izquierdo) transporta los botones de los dos lados.
+# Lista de botones: [BC] zwift_ride.dart (availableButtons / RideButtonMask).
+_RIDE_BUTTONS = [
+    ("left_up", "IZQUIERDO: cruceta ARRIBA"),
+    ("left_left", "IZQUIERDO: cruceta IZQUIERDA"),
+    ("left_right", "IZQUIERDO: cruceta DERECHA"),
+    ("left_down", "IZQUIERDO: cruceta ABAJO"),
+    ("right_y", "DERECHO: botón Y"),
+    ("right_z", "DERECHO: botón Z"),
+    ("right_a", "DERECHO: botón A"),
+    ("right_b", "DERECHO: botón B"),
+    ("left_shift_1", "IZQUIERDO: botón de CAMBIO de ARRIBA (de los dos del borde, el superior)"),
+    ("left_shift_2", "IZQUIERDO: botón de CAMBIO de ABAJO (de los dos del borde, el inferior)"),
+    ("right_shift_1", "DERECHO: botón de CAMBIO de ARRIBA (de los dos del borde, el superior)"),
+    ("right_shift_2", "DERECHO: botón de CAMBIO de ABAJO (de los dos del borde, el inferior)"),
+    ("left_powerup", "IZQUIERDO: botón de POWER-UP (el suelto, si lo hay, en la parte baja)"),
+    ("right_powerup", "DERECHO: botón de POWER-UP (el suelto, si lo hay, en la parte baja)"),
+]
+
+
+def ride_steps() -> list[Step]:
+    steps = [Step("idle", "NO toques nada.", 5.0)]
+    for label, desc in _RIDE_BUTTONS:
+        steps.append(Step(label, f"Mando {desc} — {_PRESS}. Si ese botón no existe, no pulses nada."))
+    for side, lado in (("left", "IZQUIERDO"), ("right", "DERECHO")):
+        steps += [
+            Step(f"{side}_power_button",
+                 f"Mando {lado}: botón de ENCENDIDO — 3 toques MUY CORTOS (si lo mantienes, se apaga)."),
+            Step(f"{side}_paddle", f"Mando {lado}: palanca naranja — a fondo y suelta, 3 veces.", 8.0),
+            Step(f"{side}_paddle_slow",
+                 f"Mando {lado}: palanca naranja MUY DESPACIO: unos 4 s hasta el fondo y 4 s de vuelta. Una vez.",
+                 10.0),
+            Step(f"{side}_paddle_half",
+                 f"Mando {lado}: palanca naranja hasta la MITAD y mantenla hasta que acabe el paso."),
+        ]
+    steps += [
+        Step("left_shift_hold", "Mando IZQUIERDO: un botón de CAMBIO — mantenlo 3 segundos y suelta."),
+        Step("two_buttons", "Pulsa A LA VEZ un botón de cambio IZQUIERDO y uno DERECHO, 3 veces."),
+        Step("other", "Cualquier botón o movimiento que NO haya salido en el guion (si lo hay). "
+                      "Apunta cuál es para decírmelo.", 10.0),
+    ]
+    return steps
