@@ -23,6 +23,12 @@ KEYEVENTF_EXTENDEDKEY = 0x0001
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_SCANCODE = 0x0008
 MAPVK_VK_TO_VSC = 0
+INPUT_MOUSE = 0
+MOUSEEVENTF_MOVE = 0x0001  # movimiento relativo
+MOUSE_BUTTON_FLAGS = {  # (pulsar, soltar): MOUSEEVENTF_LEFTDOWN/LEFTUP, RIGHTDOWN/RIGHTUP
+    "left": (0x0002, 0x0004),
+    "right": (0x0008, 0x0010),
+}
 
 # Teclas virtuales de las teclas con nombre (tabla "Virtual-Key Codes").
 VIRTUAL_KEYS = {
@@ -67,6 +73,12 @@ def build_input(scan: int, extended: bool, down: bool) -> INPUT:
         flags |= KEYEVENTF_KEYUP
     item = INPUT(type=INPUT_KEYBOARD)
     item.ki = KEYBDINPUT(wVk=0, wScan=scan, dwFlags=flags, time=0, dwExtraInfo=0)
+    return item
+
+
+def build_mouse_input(flags: int, dx: int = 0, dy: int = 0) -> INPUT:
+    item = INPUT(type=INPUT_MOUSE)
+    item.mi = MOUSEINPUT(dx=dx, dy=dy, mouseData=0, dwFlags=flags, time=0, dwExtraInfo=0)
     return item
 
 
@@ -117,3 +129,14 @@ class ScancodeOutput:
 
     def release(self, key: str) -> None:
         self._send(key, False)
+
+    def _send_mouse(self, item: INPUT) -> None:
+        if self._user32.SendInput(1, ctypes.byref(item), ctypes.sizeof(INPUT)) != 1 and not self._warned:
+            self._warned = True
+            log.warning("Windows ha rechazado el evento de ratón (error %s).", ctypes.get_last_error())
+
+    def mouse_move(self, dx: int, dy: int) -> None:
+        self._send_mouse(build_mouse_input(MOUSEEVENTF_MOVE, dx, dy))
+
+    def mouse_button(self, button: str, down: bool) -> None:
+        self._send_mouse(build_mouse_input(MOUSE_BUTTON_FLAGS[button][0 if down else 1]))

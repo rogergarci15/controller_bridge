@@ -21,3 +21,9 @@ def test_special_keys_cover_config_names():
     from zwiftplay.output_keyboard import SPECIAL_KEYS
     assert SPECIAL_KEYS == set(w.VIRTUAL_KEYS)
     assert w.VIRTUAL_KEYS["f1"] == 0x70 and w.VIRTUAL_KEYS["f12"] == 0x7B
+
+
+def test_build_mouse_input():
+    move = w.build_mouse_input(w.MOUSEEVENTF_MOVE, -3, 7)
+    assert (move.type, move.mi.dx, move.mi.dy, move.mi.dwFlags) == (0, -3, 7, 1)
+    assert w.MOUSE_BUTTON_FLAGS["left"] == (2, 4)

@@ -33,6 +33,7 @@ class KeyboardOutput:
 
         self._controller = Controller()
         self._key_enum = Key
+        self._mouse = None
 
     def _resolve(self, name: str):
         if len(name) == 1:
@@ -48,6 +49,21 @@ class KeyboardOutput:
         log.debug("tecla arriba: %s", key)
 
 
+    def _mouse_controller(self):
+        if self._mouse is None:
+            from pynput import mouse
+
+            self._mouse = (mouse.Controller(), mouse.Button)
+        return self._mouse
+
+    def mouse_move(self, dx: int, dy: int) -> None:
+        self._mouse_controller()[0].move(dx, dy)
+
+    def mouse_button(self, button: str, down: bool) -> None:
+        controller, buttons = self._mouse_controller()
+        (controller.press if down else controller.release)(getattr(buttons, button))
+
+
 class DryRunOutput:
     """No envía nada: imprime lo que enviaría."""
 
@@ -56,6 +72,12 @@ class DryRunOutput:
 
     def release(self, key: str) -> None:
         print(f"    [simulado] tecla arriba {key}", flush=True)
+
+    def mouse_move(self, dx: int, dy: int) -> None:
+        print(f"    [simulado] ratón mover {dx:+d},{dy:+d}", flush=True)
+
+    def mouse_button(self, button: str, down: bool) -> None:
+        print(f"    [simulado] ratón botón {button} {'ABAJO' if down else 'arriba'}", flush=True)
 
 
 def make_output(method: str = "auto"):

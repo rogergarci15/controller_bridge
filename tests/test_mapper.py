@@ -26,6 +26,12 @@ class FakeOutput:
         self.down.discard(key)
         self.log.append(("up", key))
 
+    def mouse_move(self, dx, dy):
+        self.log.append(("move", dx, dy))
+
+    def mouse_button(self, button, down):
+        self.log.append(("mouse", button, down))
+
 
 def btn(control, pressed):
     side, button = control.split(".")
@@ -147,7 +153,8 @@ def test_default_config_loads():
     assert cfg.bindings["left.shift_lower"].key == "i"
     assert cfg.bindings["left.paddle"] == Binding("a", mode="hold", threshold=50, release=30)
     assert cfg.bindings["right.paddle"].key == "d"
-    assert cfg.bindings["right.b"].key == "enter" and cfg.bindings["left.powerup"].key == "space"
+    assert cfg.bindings["right.b"].key == "enter" and cfg.bindings["left.up"].mouse == "up"
+    assert cfg.bindings["right.a"].mouse == "click" and cfg.mouse.max_speed == 1400
     assert cfg.low_battery == 15
 
 
@@ -166,6 +173,9 @@ def test_paddle_defaults_to_hold_and_numeric_keys_become_strings():
     {"right.a": {"key": "a", "bogus": 1}},
     {"right.a": {"key": "a", "mode": "hold", "long_key": "b"}},
     {"left.paddle": {"key": "a", "threshold": 20, "release": 40}},
+    {"left.up": {"mouse": "sideways"}},
+    {"left.up": {"mouse": "up", "key": "a"}},
+    {"left.paddle": {"mouse": "up"}},
 ])
 def test_bad_config_rejected(mapping):
     with pytest.raises(ConfigError):
@@ -204,6 +214,51 @@ def test_real_capture_through_default_config():
     assert marks["left_paddle"] == [("down", "a"), ("up", "a")] * 3
     assert marks["right_paddle"] == [("down", "d"), ("up", "d")] * 3
     assert marks["left_paddle_slow"] == [("down", "a"), ("up", "a")]
-    assert marks["right_y"] == [("down", "tab"), ("up", "tab")] * 3
-    for unbound in ("left_up", "right_a", "right_power_button", "idle"):
+    assert marks["right_a"] == [("mouse", "left", True), ("mouse", "left", False)] * 3
+    assert marks["left_up"] and all(e[0] == "move" and e[1] == 0 and e[2] < 0 for e in marks["left_up"])
+    for unbound in ("right_y", "left_powerup", "right_power_button", "idle"):
         assert marks[unbound] == []
+
+
+# --- ratón -----------------------------------------------------------------
+
+def run_until(m, end, step=1 / 60):
+    while (d := m.next_deadline()) is not None and d <= end:
+        m.tick(d)
+
+
+def test_mouse_move_accelerates_and_stops_on_release():
+    from zwiftplay.mapper import MouseSettings
+    out = FakeOutput()
+    m = Mapper({"left.right": Binding(mouse="right")}, out,
+               MouseSettings(start_speed=120, max_speed=1200, accel_time=1.0, interval=0.01))
+    m.handle(btn("left.right", True), 0.0)
+    run_until(m, 0.1)
+    early = sum(e[1] for e in out.log)
+    assert all(e[0] == "move" and e[2] == 0 and e[1] > 0 for e in out.log)
+    assert 10 <= early <= 25  # ~120-230 px/s durante 0,1 s
+    run_until(m, 2.0)
+    total = sum(e[1] for e in out.log)
+    assert 1700 <= total <= 1900  # rampa 1 s (~660 px) + 1 s a 1200 px/s
+    m.handle(btn("left.right", False), 2.0)
+    count = len(out.log)
+    m.tick(5.0)
+    assert len(out.log) == count and m.next_deadline() is None
+
+
+def test_short_tap_moves_only_a_few_pixels():
+    out = FakeOutput()
+    m = Mapper({"left.up": Binding(mouse="up")}, out)
+    m.handle(btn("left.up", True), 0.0)
+    run_until(m, 0.08)
+    m.handle(btn("left.up", False), 0.08)
+    assert 0 < -sum(e[2] for e in out.log) <= 15
+
+
+def test_mouse_click_follows_button_and_reset_releases_it():
+    out = FakeOutput()
+    m = Mapper({"right.a": Binding(mouse="click")}, out)
+    m.handle(btn("right.a", True), 0.0)
+    assert out.log == [("mouse", "left", True)]
+    m.reset()
+    assert out.log == [("mouse", "left", True), ("mouse", "left", False)]

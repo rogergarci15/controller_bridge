@@ -133,7 +133,7 @@ async def run(args: argparse.Namespace) -> int:
         print(f"Configuración no válida: {exc}")
         return 2
     output = DryRunOutput() if args.dry_run else make_output(args.method)
-    mapper = Mapper(config.bindings, output)
+    mapper = Mapper(config.bindings, output, config.mouse)
     printer = MonitorPrinter() if (args.dry_run or args.show_events) else None
     state = ControllerState()
     wake = asyncio.Event()

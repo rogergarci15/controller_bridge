@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from .mapper import Binding
+from .mapper import MOUSE_ACTIONS, Binding, MouseSettings
 from .output_keyboard import validate_key
 from .protocol import ALL_ANALOG_IDS, ALL_BUTTON_IDS
 
@@ -25,6 +25,7 @@ class ConfigError(ValueError):
 class Config:
     bindings: dict[str, Binding]
     low_battery: int = 15
+    mouse: MouseSettings = MouseSettings()
 
 
 def parse_config(data: Any) -> Config:
@@ -44,14 +45,21 @@ def parse_config(data: Any) -> Config:
             raise ConfigError(f"control desconocido `{control}`. Válidos: {valid}")
         if isinstance(spec, (str, int)) and not isinstance(spec, bool):  # forma corta; `1` en YAML es un entero
             spec = {"key": spec}
-        if not isinstance(spec, dict) or "key" not in spec:
-            raise ConfigError(f"`{control}`: hace falta una tecla (`key`)")
+        if not isinstance(spec, dict) or ("key" in spec) == ("mouse" in spec):
+            raise ConfigError(f"`{control}`: hace falta una tecla (`key`) o una acción de ratón (`mouse`), no ambas")
         unknown = set(spec) - _BINDING_FIELDS
         if unknown:
             raise ConfigError(f"`{control}`: opciones desconocidas {sorted(unknown)}")
         if not is_analog and _ANALOG_ONLY & set(spec):
             raise ConfigError(f"`{control}`: threshold/release solo valen para las palancas")
         spec = dict(spec)
+        if "mouse" in spec:
+            if spec["mouse"] not in MOUSE_ACTIONS:
+                raise ConfigError(f"`{control}`: `mouse` tiene que ser una de {', '.join(MOUSE_ACTIONS)}")
+            if is_analog or set(spec) - {"mouse"}:
+                raise ConfigError(f"`{control}`: una acción de ratón no admite más opciones ni vale para palancas")
+            bindings[control] = Binding(mouse=spec["mouse"])
+            continue
         spec["key"] = str(spec["key"])
         if spec.get("long_key") is not None:
             spec["long_key"] = str(spec["long_key"])
@@ -76,7 +84,14 @@ def parse_config(data: Any) -> Config:
     low_battery = data.get("low_battery", 15)
     if not isinstance(low_battery, int) or not 0 <= low_battery <= 100:
         raise ConfigError("`low_battery` tiene que ser un entero entre 0 y 100")
-    return Config(bindings=bindings, low_battery=low_battery)
+    raw_mouse = data.get("mouse") or {}
+    try:
+        mouse = MouseSettings(**{k: float(v) for k, v in raw_mouse.items()})
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise ConfigError(f"`mouse`: opciones válidas start_speed, max_speed, accel_time, interval ({exc})") from exc
+    if not (0 < mouse.start_speed <= mouse.max_speed and mouse.interval > 0 and mouse.accel_time >= 0):
+        raise ConfigError("`mouse`: tiene que cumplirse 0 < start_speed <= max_speed, interval > 0")
+    return Config(bindings=bindings, low_battery=low_battery, mouse=mouse)
 
 
 def load_config(path: Path) -> Config:

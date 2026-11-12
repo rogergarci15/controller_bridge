@@ -16,6 +16,9 @@
 #   mode: repeat  toque, y si se mantiene repite (repeat_delay, repeat_interval en segundos)
 #   long_key + long_after   pulsación larga: otra tecla si se mantiene `long_after` s
 #   threshold / release     palancas: se activa al llegar a threshold, se suelta por debajo de release
+# Ratón, en vez de tecla:   control: {mouse: up|down|left|right|click|right_click}
+#   up/down/left/right mueven el puntero mientras se mantiene (acelera poco a poco);
+#   click/right_click son los botones del ratón.
 # Teclas: un carácter (i, k, a, 1...) o: left right up down space enter esc tab f1..f12 ...
 # Un control que no aparece (o con valor vacío) no hace nada.
 
@@ -30,14 +33,25 @@ mapping:
   left.paddle:  {key: a, mode: hold, threshold: 50, release: 30}
   right.paddle: {key: d, mode: hold, threshold: 50, release: 30}
 
-  # Resto de botones.
+  # Ratón con la cruceta, como un joystick: mover con las flechas, clic con A.
+  # Sirve para todo lo que MyWhoosh no tiene en el teclado (intensidad del
+  # entrenamiento, menú...): lleva el puntero al botón y pulsa A.
+  left.up:    {mouse: up}
+  left.down:  {mouse: down}
+  left.left:  {mouse: left}
+  left.right: {mouse: right}
+  right.a:    {mouse: click}
+
   # Comprobado en MyWhoosh con el teclado:
-  right.b: enter         # pausa
+  right.b: enter         # pausa; también repite el último botón pulsado con el ratón
   right.z: u             # mostrar / ocultar la interfaz
-  # Según guías NO oficiales, sin comprobar: cambia o borra lo que no sirva.
-  left.powerup: space    # usar power-up
-  right.powerup: space
-  right.y: tab           # cambiar de cámara
+
+# Velocidad del puntero, en píxeles por segundo: empieza en start_speed y
+# llega a max_speed tras accel_time segundos con la flecha mantenida.
+mouse:
+  start_speed: 120
+  max_speed: 1400
+  accel_time: 1.0
 
 # Aviso de batería baja (%). Se usará en la fase 4.
 low_battery: 15

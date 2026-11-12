@@ -11,6 +11,10 @@ Modos de un botón:
           `repeat_delay`.
 Pulsación larga (solo con tap): si se define `long_key`, la pulsación corta
 se envía al SOLTAR, y al mantener `long_after` segundos se envía `long_key`.
+
+Ratón: en vez de `key`, un control puede llevar `mouse`:
+  up / down / left / right   mueve el puntero mientras se mantiene, acelerando
+  click / right_click        botón del ratón, pulsado mientras dure el del mando
 """
 
 from __future__ import annotations
@@ -26,11 +30,26 @@ from .protocol import AnalogEvent, ButtonEvent, Event
 class Output(Protocol):
     def press(self, key: str) -> None: ...
     def release(self, key: str) -> None: ...
+    def mouse_move(self, dx: int, dy: int) -> None: ...
+    def mouse_button(self, button: str, down: bool) -> None: ...
+
+
+MOUSE_DIRECTIONS = {"up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0)}
+MOUSE_BUTTONS = {"click": "left", "right_click": "right"}
+MOUSE_ACTIONS = (*MOUSE_DIRECTIONS, *MOUSE_BUTTONS)
+
+
+@dataclass(frozen=True)
+class MouseSettings:
+    start_speed: float = 120.0  # píxeles/s al empezar: toques cortos = ajuste fino
+    max_speed: float = 1400.0  # píxeles/s tras `accel_time` segundos mantenido
+    accel_time: float = 1.0
+    interval: float = 1 / 60  # segundos entre movimientos
 
 
 @dataclass(frozen=True)
 class Binding:
-    key: str
+    key: str | None = None
     mode: str = "tap"  # tap | hold | repeat
     tap_ms: int = 60  # varios fotogramas del juego, para que no se pierda el toque
     repeat_delay: float = 0.4
@@ -41,12 +60,15 @@ class Binding:
     # hasta bajar de `release` (histéresis contra el ruido cerca del reposo).
     threshold: int = 50
     release: int = 30
+    mouse: str | None = None  # acción de ratón en vez de tecla (ver MOUSE_ACTIONS)
 
 
 class Mapper:
-    def __init__(self, bindings: dict[str, Binding], output: Output):
+    def __init__(self, bindings: dict[str, Binding], output: Output, mouse: MouseSettings | None = None):
         self.bindings = bindings
         self.output = output
+        self.mouse = mouse or MouseSettings()
+        self._mouse_buttons_down: set[str] = set()
         self._refs: dict[str, int] = {}  # tecla -> nº de motivos por los que está abajo
         self._timers: list[tuple[float, int, Callable[[float], None]]] = []
         self._seq = itertools.count()
@@ -117,6 +139,19 @@ class Mapper:
         def still_held() -> bool:
             return self._generation.get(control) == generation and control in self._down_since
 
+        if b.mouse:
+            if pressed:
+                self._down_since[control] = now
+            else:
+                del self._down_since[control]
+            if b.mouse in MOUSE_BUTTONS:
+                button = MOUSE_BUTTONS[b.mouse]
+                (self._mouse_buttons_down.add if pressed else self._mouse_buttons_down.discard)(button)
+                self.output.mouse_button(button, pressed)
+            elif pressed:
+                self._start_mouse_move(MOUSE_DIRECTIONS[b.mouse], now, still_held)
+            return
+
         if pressed:
             self._down_since[control] = now
             if b.mode == "hold":
@@ -145,10 +180,32 @@ class Mapper:
                 else:
                     self._tap(b.key, now, b.tap_ms)  # fue corta
 
+    def _start_mouse_move(self, direction: tuple[int, int], start: float, still_held: Callable[[], bool]) -> None:
+        cfg = self.mouse
+        carry = 0.0  # fracción de píxel pendiente, para no perder precisión a baja velocidad
+
+        def step(when: float) -> None:
+            nonlocal carry
+            if not still_held():
+                return
+            ramp = min(1.0, (when - start) / cfg.accel_time) if cfg.accel_time > 0 else 1.0
+            speed = cfg.start_speed + (cfg.max_speed - cfg.start_speed) * ramp
+            carry += speed * cfg.interval
+            pixels = int(carry)
+            carry -= pixels
+            if pixels:
+                self.output.mouse_move(direction[0] * pixels, direction[1] * pixels)
+            self._at(when + cfg.interval, step)
+
+        step(start)
+
     def reset(self) -> None:
         """Suelta todas las teclas y cancela todo (p. ej. al perder la conexión)."""
         for key in list(self._refs):
             self.output.release(key)
+        for button in list(self._mouse_buttons_down):
+            self.output.mouse_button(button, False)
+        self._mouse_buttons_down.clear()
         self._refs.clear()
         self._timers.clear()
         self._down_since.clear()
