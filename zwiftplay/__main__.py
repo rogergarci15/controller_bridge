@@ -101,6 +101,23 @@ async def monitor(args: argparse.Namespace) -> int:
     return 0
 
 
+def keytest(args: argparse.Namespace) -> int:
+    """Envía una tecla varias veces, sin mandos: sirve para ver si el juego la recibe."""
+    from .output_keyboard import make_output
+
+    output = make_output(args.method)
+    print(f"En {args.delay:.0f} s enviaré la tecla `{args.key}` {args.count} veces (método: {args.method}).")
+    print("Cambia YA a la ventana donde quieras probarla (MyWhoosh, o el Bloc de notas).")
+    time.sleep(args.delay)
+    for index in range(args.count):
+        output.press(args.key)
+        time.sleep(args.hold_ms / 1000.0)
+        output.release(args.key)
+        print(f"  enviada {index + 1}/{args.count}", flush=True)
+        time.sleep(1.0)
+    return 0
+
+
 async def run(args: argparse.Namespace) -> int:
     """Puente: eventos del mando -> teclas."""
     from bleak.exc import BleakError
@@ -108,14 +125,14 @@ async def run(args: argparse.Namespace) -> int:
     from .client import RideConnection, find_controller
     from .config import ConfigError, load_config
     from .mapper import Mapper
-    from .output_keyboard import DryRunOutput, KeyboardOutput
+    from .output_keyboard import DryRunOutput, make_output
 
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuración no válida: {exc}")
         return 2
-    output = DryRunOutput() if args.dry_run else KeyboardOutput()
+    output = DryRunOutput() if args.dry_run else make_output(args.method)
     mapper = Mapper(config.bindings, output)
     printer = MonitorPrinter() if (args.dry_run or args.show_events) else None
     state = ControllerState()
@@ -189,6 +206,16 @@ def main(argv: list[str] | None = None) -> int:
     runp.add_argument("--address", help="dirección Bluetooth del mando")
     runp.add_argument("--scan-time", type=float, default=8.0)
 
+    runp.add_argument("--method", choices=["auto", "scancode", "vk"], default="auto",
+                      help="cómo enviar las teclas (auto: scancode en Windows)")
+
+    kt = sub.add_parser("keytest", help="envía una tecla de prueba, sin mandos")
+    kt.add_argument("key", nargs="?", default="k")
+    kt.add_argument("--count", type=int, default=3)
+    kt.add_argument("--delay", type=float, default=5.0, help="segundos de espera antes de empezar")
+    kt.add_argument("--hold-ms", type=int, default=60)
+    kt.add_argument("--method", choices=["auto", "scancode", "vk"], default="auto")
+
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -199,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
             return asyncio.run(monitor(args))
         except KeyboardInterrupt:
             return 130
+    if args.command == "keytest":
+        return keytest(args)
     if args.command == "run":
         try:
             return asyncio.run(run(args))

@@ -44,8 +44,8 @@ def make(**bindings):
 def test_tap_is_one_keystroke_however_long_held():
     m, out = make(right__shift_upper=Binding("k"))
     m.handle(btn("right.shift_upper", True), 0.0)
-    assert out.log == [("down", "k")] and m.next_deadline() == pytest.approx(0.04)
-    m.tick(0.04)
+    assert out.log == [("down", "k")] and m.next_deadline() == pytest.approx(0.06)
+    m.tick(0.06)
     assert out.log == [("down", "k"), ("up", "k")]
     m.handle(btn("right.shift_upper", False), 3.0)  # soltar 3 s después: nada más
     m.tick(10.0)
@@ -72,10 +72,10 @@ def test_hold_follows_button():
 def test_repeat():
     m, out = make(left__up=Binding("x", mode="repeat", repeat_delay=0.4, repeat_interval=0.1))
     m.handle(btn("left.up", True), 0.0)
-    for t in (0.04, 0.4, 0.44, 0.5, 0.54, 0.6, 0.64):
+    for t in (0.06, 0.4, 0.46, 0.5, 0.56, 0.6, 0.66):
         m.tick(t)
     assert out.log.count(("down", "x")) == 4  # t=0, 0.4, 0.5, 0.6
-    m.handle(btn("left.up", False), 0.65)
+    m.handle(btn("left.up", False), 0.67)
     m.tick(5.0)
     assert out.log.count(("down", "x")) == 4 and not out.down
 

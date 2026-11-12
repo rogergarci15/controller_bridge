@@ -32,7 +32,7 @@ class Output(Protocol):
 class Binding:
     key: str
     mode: str = "tap"  # tap | hold | repeat
-    tap_ms: int = 40
+    tap_ms: int = 60  # varios fotogramas del juego, para que no se pierda el toque
     repeat_delay: float = 0.4
     repeat_interval: float = 0.15
     long_key: str | None = None
