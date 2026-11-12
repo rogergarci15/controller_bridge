@@ -1,0 +1,36 @@
+# Mapeo Zwift Ride -> MyWhoosh (teclado).
+#
+# Controles disponibles (lado.botón):
+#   left.up  left.down  left.left  left.right        cruceta del mando izquierdo
+#   right.a  right.b  right.y  right.z               botones del mando derecho
+#   left.shift_upper   left.shift_lower              botones de cambio izquierdos
+#   right.shift_upper  right.shift_lower             botones de cambio derechos
+#   left.powerup  right.powerup                      botones de power-up
+#   left.power    right.power                        botones de encendido
+#   left.paddle   right.paddle                       palancas naranjas (analógicas, 0-100)
+#
+# Forma corta:   control: tecla
+# Forma larga:   control: {key: tecla, mode: tap|hold|repeat, ...}
+#   mode: tap     un toque de tecla por pulsación (por defecto en botones)
+#   mode: hold    tecla pulsada mientras dure (por defecto en palancas)
+#   mode: repeat  toque, y si se mantiene repite (repeat_delay, repeat_interval en segundos)
+#   long_key + long_after   pulsación larga: otra tecla si se mantiene `long_after` s
+#   threshold / release     palancas: se activa al llegar a threshold, se suelta por debajo de release
+# Teclas: un carácter (i, k, a, 1...) o: left right up down space enter esc tab f1..f12 ...
+# Un control que no aparece (o con valor vacío) no hace nada.
+
+mapping:
+  # Cambio de marchas. Según el mapa de teclas de BikeControl para MyWhoosh:
+  # K = subir marcha, I = bajar marcha. POR VERIFICAR en MyWhoosh; si va al
+  # revés, intercambia las dos letras.
+  right.shift_upper: k
+  right.shift_lower: k
+  left.shift_upper: i
+  left.shift_lower: i
+
+  # Dirección: tecla mantenida mientras la palanca pase del umbral.
+  left.paddle:  {key: a, mode: hold, threshold: 50, release: 30}
+  right.paddle: {key: d, mode: hold, threshold: 50, release: 30}
+
+# Aviso de batería baja (%). Se usará en la fase 4.
+low_battery: 15
