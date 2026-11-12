@@ -1,0 +1,17 @@
+LICENSE
+pyproject.toml
+tests/test_capture.py
+tests/test_discovery.py
+tests/test_handshake.py
+zwiftplay/__init__.py
+zwiftplay/ble.py
+zwiftplay/capture.py
+zwiftplay/capture_script.py
+zwiftplay/constants.py
+zwiftplay/discovery.py
+zwiftplay/handshake.py
+zwiftplay_bridge.egg-info/PKG-INFO
+zwiftplay_bridge.egg-info/SOURCES.txt
+zwiftplay_bridge.egg-info/dependency_links.txt
+zwiftplay_bridge.egg-info/requires.txt
+zwiftplay_bridge.egg-info/top_level.txt

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zwiftplay-bridge"
+version = "0.1.0"
+description = "Puente Zwift Play -> MyWhoosh (BLE a teclado / OpenBikeControl)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "bleak>=0.22",
+    "cryptography>=42",
+    "protobuf>=4.25",
+    "pynput>=1.7",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["zwiftplay"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
