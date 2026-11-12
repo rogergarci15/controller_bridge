@@ -148,7 +148,7 @@ def test_unbound_control_does_nothing():
 # --- configuración ---------------------------------------------------------
 
 def test_default_config_loads():
-    cfg = load_config(ROOT / "config.yaml")
+    cfg = load_config(ROOT / "zwiftplay" / "default_config.yaml")
     assert cfg.bindings["right.shift_upper"] == Binding("k")
     assert cfg.bindings["left.shift_lower"].key == "i"
     assert cfg.bindings["left.paddle"] == Binding("a", mode="hold", threshold=50, release=30)
@@ -186,7 +186,7 @@ def test_bad_config_rejected(mapping):
 
 def test_real_capture_through_default_config():
     """Criterios de aceptación: 1 pulsación = 1 cambio; la dirección sigue a la palanca."""
-    cfg = load_config(ROOT / "config.yaml")
+    cfg = load_config(ROOT / "zwiftplay" / "default_config.yaml")
     out = FakeOutput()
     mapper, state = Mapper(cfg.bindings, out), p.ControllerState()
     marks, current = {}, ""

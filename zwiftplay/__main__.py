@@ -118,73 +118,61 @@ def keytest(args: argparse.Namespace) -> int:
     return 0
 
 
-async def run(args: argparse.Namespace) -> int:
-    """Puente: eventos del mando -> teclas."""
-    from bleak.exc import BleakError
+STATUS_TEXT = {
+    "searching": "Buscando el mando… (enciéndelo; Zwift y Companion cerrados)",
+    "connecting": "Mando encontrado, conectando: {detail}",
+    "connected": "CONECTADO (firmware {detail})",
+    "disconnected": "Conexión perdida: {detail}. Reconectando…",
+    "error": "Error: {detail}",
+    "battery": "Batería: {detail} %",
+    "low_battery": "¡BATERÍA BAJA! {detail} %: carga los mandos",
+}
+FOCUS_TEXT = {
+    "on": "MyWhoosh en primer plano: los botones actúan",
+    "off": "MyWhoosh no está en primer plano: los botones se ignoran",
+}
 
-    from .client import RideConnection, find_controller
-    from .config import ConfigError, load_config
-    from .mapper import Mapper
+
+def status_line(state: str, detail: str) -> str:
+    if state == "focus":
+        return FOCUS_TEXT[detail]
+    return STATUS_TEXT.get(state, state).format(detail=detail)
+
+
+async def run(args: argparse.Namespace) -> int:
+    """Puente: eventos del mando -> teclas, con reconexión automática."""
+    from .bridge import Bridge
+    from .config import ConfigError, ensure_user_config, load_config
     from .output_keyboard import DryRunOutput, make_output
 
+    path = args.config or ensure_user_config()
     try:
-        config = load_config(args.config)
+        config = load_config(path)
     except ConfigError as exc:
         print(f"Configuración no válida: {exc}")
         return 2
-    output = DryRunOutput() if args.dry_run else make_output(args.method)
-    mapper = Mapper(config.bindings, output, config.mouse)
     printer = MonitorPrinter() if (args.dry_run or args.show_events) else None
-    state = ControllerState()
-    wake = asyncio.Event()
+    last = [""]
 
-    def on_message(message: Message) -> None:
-        # Camino crítico de latencia: se ejecuta en cuanto llega la notificación.
-        if isinstance(message, Keypad):
-            now = time.monotonic()
-            for event in state.update(message):
-                mapper.handle(event, now)
-            wake.set()
-        if printer is not None:
-            printer.handle(message)
+    def on_status(state: str, detail: str) -> None:
+        if state == "searching" and last[0] == "searching":
+            return  # no repetir la línea en cada ciclo de búsqueda
+        last[0] = state
+        if state == "battery" and printer is not None:
+            return  # ya la muestra el impresor de eventos
+        print(f"[{time.strftime('%H:%M:%S')}] {status_line(state, detail)}", flush=True)
 
-    async def timers() -> None:
-        while True:
-            deadline = mapper.next_deadline()
-            timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
-            try:
-                await asyncio.wait_for(wake.wait(), timeout)
-            except asyncio.TimeoutError:
-                pass
-            wake.clear()
-            mapper.tick(time.monotonic())
-
-    print(f"Buscando el mando ({args.scan_time:.0f} s)… Zwift y Companion tienen que estar cerrados.")
-    try:
-        found = await find_controller(args.scan_time, args.address)
-    except (BleakError, OSError) as exc:
-        print(f"Error de Bluetooth: {exc}")
-        return 2
-    if found is None:
-        print("No se ha encontrado ningún mando compatible. Prueba `python tools/scan.py`.")
-        return 1
-    connection = RideConnection(found, on_message)
-    try:
-        await connection.connect()
-    except (BleakError, asyncio.TimeoutError, OSError, RuntimeError) as exc:
-        print(f"No se pudo conectar a {found.label}: {exc}")
-        return 1
-    mode = "SIMULACIÓN, no se envían teclas" if args.dry_run else "enviando teclas a la ventana con el foco"
-    print(f"Conectado a {found.label} (firmware {connection.firmware}). Modo: {mode}.")
-    print(f"{len(config.bindings)} controles asignados. Ctrl+C para salir.\n")
-    timer_task = asyncio.create_task(timers())
-    try:
-        await connection.disconnected.wait()
-        print("\nEl mando se ha desconectado.")
-    finally:
-        timer_task.cancel()
-        mapper.reset()  # que no quede ninguna tecla pulsada
-        await connection.disconnect()
+    bridge = Bridge(
+        config,
+        DryRunOutput() if args.dry_run else make_output(args.method),
+        on_status=on_status,
+        on_message=printer.handle if printer else None,
+        address=args.address,
+        gate_focus=not args.dry_run and not args.any_window,
+    )
+    mode = "SIMULACIÓN, no se envían teclas" if args.dry_run else "enviando teclas"
+    print(f"Configuración: {path} ({len(config.bindings)} controles). Modo: {mode}. Ctrl+C para salir.")
+    await bridge.run()
     return 0
 
 
@@ -200,14 +188,17 @@ def main(argv: list[str] | None = None) -> int:
     mon.add_argument("--scan-time", type=float, default=8.0)
 
     runp = sub.add_parser("run", help="puente: traduce los mandos a teclas según config.yaml")
-    runp.add_argument("--config", type=Path, default=Path("config.yaml"))
+    runp.add_argument("--config", type=Path, help="fichero de configuración (por defecto, el del usuario)")
+    runp.add_argument("--any-window", action="store_true", help="actuar en cualquier ventana, no solo en MyWhoosh")
     runp.add_argument("--dry-run", action="store_true", help="no enviar teclas; mostrar qué se enviaría")
     runp.add_argument("--show-events", action="store_true", help="mostrar también los eventos del mando")
     runp.add_argument("--address", help="dirección Bluetooth del mando")
-    runp.add_argument("--scan-time", type=float, default=8.0)
 
     runp.add_argument("--method", choices=["auto", "scancode", "vk"], default="auto",
                       help="cómo enviar las teclas (auto: scancode en Windows)")
+
+    appp = sub.add_parser("app", help="aplicación de escritorio (ventana)")
+    appp.add_argument("--minimized", action="store_true")
 
     kt = sub.add_parser("keytest", help="envía una tecla de prueba, sin mandos")
     kt.add_argument("key", nargs="?", default="k")
@@ -226,6 +217,10 @@ def main(argv: list[str] | None = None) -> int:
             return asyncio.run(monitor(args))
         except KeyboardInterrupt:
             return 130
+    if args.command == "app":
+        from .app import main as app_main
+
+        return app_main(["--minimized"] if args.minimized else [])
     if args.command == "keytest":
         return keytest(args)
     if args.command == "run":

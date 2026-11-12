@@ -53,5 +53,10 @@ mouse:
   max_speed: 1400
   accel_time: 1.0
 
-# Aviso de batería baja (%). Se usará en la fase 4.
+# Aviso de batería baja (%).
 low_battery: 15
+
+# Los botones solo actúan cuando la ventana activa contiene este texto en su
+# título, para no escribir teclas ni mover el ratón en otros programas.
+# Déjalo vacío ("") para que actúen siempre.
+only_when_focused: "MyWhoosh"

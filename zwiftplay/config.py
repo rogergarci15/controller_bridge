@@ -26,6 +26,7 @@ class Config:
     bindings: dict[str, Binding]
     low_battery: int = 15
     mouse: MouseSettings = MouseSettings()
+    only_when_focused: str = ""
 
 
 def parse_config(data: Any) -> Config:
@@ -91,7 +92,10 @@ def parse_config(data: Any) -> Config:
         raise ConfigError(f"`mouse`: opciones válidas start_speed, max_speed, accel_time, interval ({exc})") from exc
     if not (0 < mouse.start_speed <= mouse.max_speed and mouse.interval > 0 and mouse.accel_time >= 0):
         raise ConfigError("`mouse`: tiene que cumplirse 0 < start_speed <= max_speed, interval > 0")
-    return Config(bindings=bindings, low_battery=low_battery, mouse=mouse)
+    focus = data.get("only_when_focused") or ""
+    if not isinstance(focus, str):
+        raise ConfigError("`only_when_focused` tiene que ser un texto")
+    return Config(bindings=bindings, low_battery=low_battery, mouse=mouse, only_when_focused=focus)
 
 
 def load_config(path: Path) -> Config:
@@ -103,3 +107,27 @@ def load_config(path: Path) -> Config:
         return parse_config(yaml.safe_load(text))
     except yaml.YAMLError as exc:
         raise ConfigError(f"{path}: YAML no válido: {exc}") from exc
+
+
+DEFAULT_CONFIG_PATH = Path(__file__).with_name("default_config.yaml")
+
+
+def user_config_path() -> Path:
+    """Fichero de configuración del usuario (se crea con los valores por defecto)."""
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "ZwiftRideBridge" / "config.yaml"
+
+
+def ensure_user_config(path: Path | None = None) -> Path:
+    """Devuelve la ruta de la configuración del usuario, creándola si no existe."""
+    path = path or user_config_path()
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(DEFAULT_CONFIG_PATH.read_bytes())
+    return path
