@@ -20,9 +20,7 @@
 # Un control que no aparece (o con valor vacío) no hace nada.
 
 mapping:
-  # Cambio de marchas. Según el mapa de teclas de BikeControl para MyWhoosh:
-  # K = subir marcha, I = bajar marcha. POR VERIFICAR en MyWhoosh; si va al
-  # revés, intercambia las dos letras.
+  # Cambio de marchas. Comprobado en MyWhoosh: K = subir marcha, I = bajar.
   right.shift_upper: k
   right.shift_lower: k
   left.shift_upper: i
@@ -31,6 +29,15 @@ mapping:
   # Dirección: tecla mantenida mientras la palanca pase del umbral.
   left.paddle:  {key: a, mode: hold, threshold: 50, release: 30}
   right.paddle: {key: d, mode: hold, threshold: 50, release: 30}
+
+  # Resto de botones. Atajos de MyWhoosh según guías NO oficiales (pueden
+  # cambiar entre versiones): compruébalos y cambia o borra lo que no te sirva.
+  left.powerup: space    # usar power-up
+  right.powerup: space
+  right.y: tab           # cambiar de cámara
+  right.z: h             # mostrar / ocultar la interfaz
+  right.b: esc           # pausa / menú
+  left.down: u           # media vuelta
 
 # Aviso de batería baja (%). Se usará en la fase 4.
 low_battery: 15
